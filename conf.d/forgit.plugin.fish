@@ -53,9 +53,6 @@ test -z "$forgit_preview_context";    and set -g forgit_preview_context "3"
 
 set -g forgit_log_preview_options "--graph --pretty=format:'$forgit_log_format' --color=always --abbrev-commit --date=relative"
 
-# optional render emoji characters (https://github.com/wfxr/emoji-cli)
-type -q emojify >/dev/null 2>&1 && set -g forgit_emojify '|emojify'
-
 # git commit viewer
 function forgit::log -d "git commit viewer"
     forgit::inside_work_tree || return 1
@@ -87,11 +84,9 @@ function forgit::log -d "git commit viewer"
 
     if set -q FORGIT_LOG_GRAPH_ENABLE
         set graph "--graph"
-    else
-        set graph ""
     end
 
-    eval "git log $graph --color=always --format='$log_format' $argv $forgit_emojify" |
+    git log $graph --color=always --format="$log_format" $argv |
         env FZF_DEFAULT_OPTS="$opts" fzf 
 
     set fzf_exit_code $status
@@ -278,11 +273,9 @@ function forgit::checkout::commit -d "git checkout commit selector" --argument-n
 
     if set -q FORGIT_LOG_GRAPH_ENABLE
         set graph "--graph"
-    else
-        set graph ""
     end
 
-    eval "git log $graph --color=always --format='$forgit_log_format' $forgit_emojify" |
+    git log $graph --color=always --format="$forgit_log_format"|
         FZF_DEFAULT_OPTS="$opts" fzf | eval "$forgit_extract_sha" | xargs -I% git checkout % --
 end
 
@@ -444,8 +437,6 @@ function forgit::fixup -d "git fixup"
 
     if set -q FORGIT_LOG_GRAPH_ENABLE
         set graph "--graph"
-    else
-        set graph ""
     end
 
     set files (echo $argv | sed -nE 's/.* -- (.*)/\1/p')
@@ -465,8 +456,8 @@ function forgit::fixup -d "git fixup"
         $FORGIT_FIXUP_FZF_OPTS
     "
 
-    set cmd "git log $graph --color=always --format='$forgit_log_format' $argv $forgit_emojify"
-    set target_commit (eval "$cmd" | FZF_DEFAULT_OPTS="$opts" fzf | eval "$forgit_extract_sha")
+    set target_commit (git log $graph --color=always --format="$forgit_log_format" $argv |
+        FZF_DEFAULT_OPTS="$opts" fzf | eval "$forgit_extract_sha")
 
     if test -n "$target_commit" && git commit --fixup "$target_commit"
         set prev_commit (forgit::previous_commit $target_commit)
@@ -482,10 +473,7 @@ function forgit::rebase -d "git rebase"
 
     if set -q FORGIT_LOG_GRAPH_ENABLE
         set graph "--graph"
-    else
-        set graph ""
     end
-    set cmd "git log $graph --color=always --format='$forgit_log_format' $argv $forgit_emojify"
 
     set files (echo $argv | sed -nE 's/.* -- (.*)/\1/p')
     set preview "echo {} | $forgit_extract_sha | xargs -I% git show --color=always % -- $files | $forgit_show_pager"
@@ -503,7 +491,8 @@ function forgit::rebase -d "git rebase"
         --preview=\"$preview\"
         $FORGIT_REBASE_FZF_OPTS
     "
-    set target_commit (eval "$cmd" | FZF_DEFAULT_OPTS="$opts" fzf | eval "$forgit_extract_sha")
+    set target_commit (git log $graph --color=always --format="$forgit_log_format" $argv |
+        FZF_DEFAULT_OPTS="$opts" fzf | eval "$forgit_extract_sha")
 
     if test $target_commit
         set prev_commit (forgit::previous_commit $target_commit)
@@ -574,9 +563,7 @@ function forgit::revert::commit --argument-names 'commit_hash' --wraps "git reve
 
     set files (echo $argv | sed -nE 's/.* -- (.*)/\1/p') # extract files parameters for `git show` command
 
-    set cmd "git log --graph --color=always --format='$forgit_log_format' $argv $forgit_emojify"
-
-    set commits (eval $cmd |
+    set commits (git log --graph --color=always --format="$forgit_log_format" $argv |
         FZF_DEFAULT_OPTS="$opts" fzf -m |
         string match -r "[a-f0-9]+")
 
