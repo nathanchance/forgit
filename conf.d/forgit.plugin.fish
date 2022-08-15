@@ -23,7 +23,9 @@ end
 
 function forgit::previous_commit
     # "SHA~" is invalid when the commit is the first commit, but we can use "--root" instead
-    if test (git rev-parse $argv) = (git rev-list --max-parents=0 HEAD)
+    set rev_parse (git rev-parse $argv)
+    set rev_list (git rev-list --max-parents=0 HEAD)
+    if test "$rev_parse" = "$rev_list"
         echo "--root"
     else
         echo "$argv~"
